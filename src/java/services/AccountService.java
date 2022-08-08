@@ -3,6 +3,7 @@ package services;
 import dataaccess.UserDB;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import models.User;
@@ -15,9 +16,8 @@ public class AccountService {
         try {
             User user = userDB.get(email);
             if (password.equals(user.getPassword())) {
-                //Logger.getLogger(AccountService.class.getName()).log(Level.INFO, "Successful login by {0}", email);
-
-                /*
+                Logger.getLogger(AccountService.class.getName()).log(Level.INFO, "Successful login by {0}", email);
+                
                 String to = user.getEmail();
                 String subject = "Notes App Login";
                 String template = path + "/emailtemplates/login.html";
@@ -28,7 +28,7 @@ public class AccountService {
                 tags.put("date", (new java.util.Date()).toString());
                 
                 GmailService.sendMail(to, subject, template, tags);
-                 */
+                 
                 
                 return user;
             }
@@ -37,4 +37,50 @@ public class AccountService {
 
         return null;
     }
+    
+    public boolean resetPassword(String email, String path, String url){
+        
+        String uuid = UUID.randomUUID().toString();
+        
+        String link = url + "?uuid=" + uuid;
+        UserDB userDB = new UserDB();
+        
+        try {
+            User user = userDB.get(email);
+            if (user != null) {
+                user.setResetPasswordUuid(uuid);
+                userDB.update(user);
+            
+                Logger.getLogger(AccountService.class.getName()).log(Level.INFO, "UUID updated and reset password link sent successfully at {0}", email);
+                
+                String to = user.getEmail();
+                String subject = "Notes keeper password reset";
+                String template = path + "/emailtemplates/resetPassword.html";
+                
+                HashMap<String, String> tags = new HashMap<>();
+                tags.put("firstname", user.getFirstName());
+                tags.put("lastname", user.getLastName());
+                tags.put("link", link);
+                
+                GmailService.sendMail(to, subject, template, tags);
+                
+                return true;
+            }
+        } catch (Exception e) {}
+        return false;
+    }
+    
+    public boolean changePassword(String uuid, String password) {
+       UserDB userDB = new UserDB();
+        try {
+            User user = userDB.getByUUID(uuid);
+            user.setPassword(password);
+            user.setResetPasswordUuid(null);
+            userDB.update(user);
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
 }
